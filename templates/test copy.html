@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loader Inside Button</title>
+
+<style>
+  .range-slider {
+  position: relative;
+  width: 100%;
+  max-width: 400px; /* Adjust based on your needs */
+  height: 10px;
+  background: #ddd;
+}
+
+.slider-track, .slider-selected {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: #ccc;
+}
+
+.slider-track {
+  left: 0;
+  right: 0;
+}
+
+.slider-selected {
+  background: #4CAF50; /* Color for the selected range */
+}
+
+.thumb {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background: #333;
+  cursor: pointer;
+  top: -5px; /* Adjust so the thumb is centered vertically on the track */
+  margin-left: -10px; /* Adjust so the thumb is centered horizontally */
+  border-radius: 50%;
+}
+
+.thumb.end {
+  left: 100%;
+  margin-left: -10px;
+}
+
+</style>
+
+</head>
+<body>
+
+  <div class="range-slider" onmousedown="initDrag(event)">
+    <div class="slider-track"></div>
+    <div class="slider-selected"></div>
+    <div class="thumb start" id="startThumb"></div>
+    <div class="thumb end" id="endThumb"></div>
+  </div>
+  <div id="rangeValue">Start: 0%, End: 100%</div>
+  
+
+  <script>
+
+
+let dragging = false;
+let currentThumb;
+
+const initDrag = (e) => {
+  if (e.target.classList.contains('thumb')) {
+    dragging = true;
+    currentThumb = e.target;
+    document.addEventListener('mousemove', doDrag);
+    document.addEventListener('mouseup', stopDrag);
+  }
+};
+
+const doDrag = (e) => {
+  if (dragging) {
+    const slider = document.querySelector('.range-slider');
+    const rect = slider.getBoundingClientRect();
+    const offsetX = e.clientX - rect.left; // Mouse position inside the slider
+    const totalWidth = rect.width;
+    const positionPercent = Math.max(0, Math.min(100, (offsetX / totalWidth) * 100));
+    currentThumb.style.left = `${positionPercent}%`;
+    updateRange();
+  }
+};
+
+const stopDrag = () => {
+  dragging = false;
+  document.removeEventListener('mousemove', doDrag);
+  document.removeEventListener('mouseup', stopDrag);
+};
+
+const updateRange = () => {
+  const startThumb = document.getElementById('startThumb');
+  const endThumb = document.getElementById('endThumb');
+  const startPercent = parseFloat(startThumb.style.left);
+  const endPercent = parseFloat(endThumb.style.left);
+  
+  // Update the selected range background
+  const selectedRange = document.querySelector('.slider-selected');
+  selectedRange.style.left = `${startPercent}%`;
+  selectedRange.style.width = `${endPercent - startPercent}%`;
+
+  // Update range value display
+  document.getElementById('rangeValue').textContent = `Start: ${startPercent.toFixed(2)}%, End: ${endPercent.toFixed(2)}%`;
+};
+
+// Initialize the selected range to cover the full width initially
+document.addEventListener('DOMContentLoaded', updateRange);
+
+
+
+  </script>
+  
+
+</body>
+</html>

@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Video Editor</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link href="static/style.css?v=0.2" rel="stylesheet" />
+
+    <!-- BootStrap CSS/Js -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Cropper.js CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css" rel="stylesheet" />
+
+    <!-- Cropper.js JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+
+</head>
+
+<body>
+
+    <div class="header">
+        <h1>Free Video Editor</h1>
+        <p>Download youtube videos or upload your own videos, and edit.</p>
+    </div>
+
+    <div class="navbar">
+        <a href="/" class="active">Trim & Crop</a>
+        <a href="/convert_video_ext">Convert Video Extension</a>
+        <a href="/convert_image_ext">Convert Image Extension</a>
+        <a href="/generate_ai_images">Generate AI Images</a>
+        <a href="generate_ai_video">Generate AI Videos</a>
+    </div>
+
+    <div class="row main-container">
+        <div class="col-md-12">
+
+            <div class="form-group row">
+                <div class="col-sm-12 mb-3 mt-3">
+                    <form id="trimForm" method="post" enctype="multipart/form-data" class="container">
+                        <div class="form-group row mb-3 mt-3">
+                            <div class="col-sm-8">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control input-sm" id="youtube_url"
+                                        placeholder="Enter Youtube URL" name="youtube_url">
+                                    <label for="youtube_url">Enter Youtube URL</label>
+                                </div>
+                            </div>
+                            <div class="col-sm-4">
+                                <button id="downloadButton" class="btn btn-info btn-lg"><span class="loader"
+                                        id="loader1"></span> Download Video</button>
+                            </div>
+                        </div>
+                        <div class="form-group row mb-3 mt-3">
+                            <div class="col-sm-8">
+                                <input type="file" name="video" required accept="video/*"
+                                    class="form-control input-sm" />
+                            </div>
+                            <div class="col-sm-4">
+                                <button id="uploadButton" class="btn btn-info"><span class="loader" id="loader2"></span>
+                                    Upload Video</button>
+                            </div>
+                        </div>
+
+                        <div class="form-group row mb-3 mt-3" id="videoPlayerDiv" style="display: none;">
+                            <div class="col-sm-6">
+                                <video id="videoPreview" controls>
+                                    <source src="#" type="video/mp4">
+                                    Your browser does not support the video tag.
+                                </video>
+                                <div class="range-slider" onmousedown="initDrag(event)">
+                                    <div class="slider-track"></div>
+                                    <div class="slider-selected"></div>
+                                    <div class="thumb start" id="startThumb"></div>
+                                    <div class="thumb end" id="endThumb"></div>
+                                </div>
+                                <div id="rangeValue">Start: 0%, End: 100%</div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div id="cropperWrapper" style="width: 640px; height: 358px;">
+                                    <canvas id="videoCanvas"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group row mb-3 mt-3" id="btnPlayerDiv" style="display: none;">
+                            <div class="col-sm-12">
+                                <button id="trimButton" class="btn btn-info"><span class="loader" id="loader3"></span>
+                                    Trim Video</button>
+                            </div>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <h2>Copyright By Nitish</h2>
+    </div>
+
+
+    <script>
+
+        let videoFile;
+
+        var cropper;
+
+
+        let selectedStart = 0;
+        let selectedEnd = 10;
+
+        let dragging = false;
+        let currentThumb;
+        let startPercent = 0, endPercent = 100; // Default values for start and end
+
+
+        let videoPlayer = document.getElementById('videoPreview');
+
+
+        const initDrag = (e) => {
+            if (e.target.classList.contains('thumb')) {
+                dragging = true;
+                currentThumb = e.target;
+                document.addEventListener('mousemove', doDrag);
+                document.addEventListener('mouseup', stopDrag);
+            }
+        };
+
+        const doDrag = (e) => {
+            if (dragging) {
+                const slider = document.querySelector('.range-slider');
+                const rect = slider.getBoundingClientRect();
+                const offsetX = e.clientX - rect.left; // Mouse position inside the slider
+                const totalWidth = rect.width;
+                const positionPercent = Math.max(0, Math.min(100, (offsetX / totalWidth) * 100));
+                currentThumb.style.left = `${positionPercent}%`;
+                updateRange();
+                updateVideoPosition(positionPercent);
+            }
+        };
+
+        const stopDrag = () => {
+            dragging = false;
+            document.removeEventListener('mousemove', doDrag);
+            document.removeEventListener('mouseup', stopDrag);
+        };
+
+        const updateVideoPosition = (percent) => {
+            const duration = videoPlayer.duration;
+            if (!duration) return; // Video metadata not loaded
+            const time = (percent / 100) * duration;
+            videoPlayer.currentTime = time;
+        };
+
+        // Function to update the video playback range
+        const updateRange = () => {
+            const slider = document.querySelector('.range-slider');
+            const rect = slider.getBoundingClientRect();
+            const startThumb = document.getElementById('startThumb');
+            const endThumb = document.getElementById('endThumb');
+
+            startPercent = parseFloat(startThumb.style.left);
+            console.log("startPercent,", startPercent);
+            if(startPercent < 0 || isNaN(startPercent)) startPercent = 0;
+            endPercent = parseFloat(endThumb.style.left);
+            if(endPercent < 0 || isNaN(endPercent)) endPercent = 100;
+            console.log("startPercent, endPercent", startPercent, endPercent);
+
+            const selectedRange = document.querySelector('.slider-selected');
+            selectedRange.style.left = `${startPercent}%`;
+            selectedRange.style.width = `${endPercent - startPercent}%`;
+
+            // Convert percent to time
+            const startTime = (startPercent / 100) * videoPlayer.duration;
+            const endTime = (endPercent / 100) * videoPlayer.duration;
+            console.log(videoPlayer.duration);
+
+            selectedStart = startTime
+            selectedEnd = endTime
+
+            console.log(selectedStart)
+
+            document.getElementById('rangeValue').textContent = `Start: ${startTime.toFixed(2)}s, End: ${endTime.toFixed(2)}s`;
+        };
+
+
+        function setCropper(video) {
+            // Create or get existing canvas
+            var canvas = document.getElementById('videoCanvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Initialize Cropper on the canvas
+            if (cropper) {
+                cropper.destroy(); // Destroy existing cropper instance if it exists
+            }
+
+            cropper = new Cropper(canvas, {
+                aspectRatio: 16 / 9,
+                crop(event) {
+                    console.log(event.detail.x, event.detail.y, event.detail.width, event.detail.height);
+                    // Save these values for the cropping operation
+                },
+            });
+        }
+
+        document.getElementById('trimForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const loader = document.getElementById('loader2');
+            loader.style.display = 'inline-block'; // Show loader
+
+            var formData = new FormData(this);
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            }).then(response => response.json())
+                .then(data => {
+                    document.getElementById('videoPlayerDiv').style.display = 'block';
+                    document.getElementById('btnPlayerDiv').style.display = 'block';
+                    videoFile = data.video_file;
+                    videoPlayer = document.getElementById('videoPreview');
+                    videoPlayer.src = "/uploads/" + videoFile;
+                    videoPlayer.load();
+                    // Event listener for when the video's metadata is loaded
+                    videoPlayer.onloadedmetadata = function () {
+
+                        const startTime = 0;
+                        const endTime = videoPlayer.duration;
+                        selectedEnd = endTime;
+                        console.log("Duration:", videoPlayer.duration);
+                        document.getElementById('rangeValue').textContent = `Start: ${startTime.toFixed(2)}s, End: ${endTime.toFixed(2)}s`;
+                        
+                        setTimeout(function () {
+                            setCropper(videoPlayer);
+                        }, 1000);
+
+                        updateVideoPosition(100);
+                    };
+                    /*data.thumbnails.forEach((thumb, index) => {
+                        let img = document.createElement("img");
+                        img.src = thumb.url;
+                        img.className = "thumbnail";
+                        img.onclick = () => {
+                            if (index <= selectedEnd) {
+                                updateStartPoint(index);
+                            } else {
+                                updateEndPoint(index);
+                            }
+                        };
+                        document.getElementById("storyboard").appendChild(img);
+                    });*/
+                    loader.style.display = 'none';
+                });
+        });
+
+
+
+        document.getElementById('downloadButton').addEventListener('click', function (e) {
+            e.preventDefault();
+
+            const loader = document.getElementById('loader1');
+            loader.style.display = 'inline-block'; // Show loader
+
+            var youtube_url = document.getElementById('youtube_url').value; // Assuming this holds your start time
+
+            fetch('/download_youtube_video', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ youtube_url: youtube_url })
+            }).then(response => response.json())
+                .then(data => {
+                    document.getElementById('videoPlayerDiv').style.display = 'block';
+                    document.getElementById('btnPlayerDiv').style.display = 'block';
+                    videoFile = data.video_file;
+                    videoPlayer = document.getElementById('videoPreview');
+                    videoPlayer.src = "/uploads/" + videoFile;
+                    videoPlayer.load();
+                    // Event listener for when the video's metadata is loaded
+
+                    videoPlayer.onloadedmetadata = function () {
+
+                        const startTime = 0;
+                        const endTime = videoPlayer.duration;
+                        selectedEnd = endTime;
+                        console.log("Duration:", videoPlayer.duration);
+                        document.getElementById('rangeValue').textContent = `Start: ${startTime.toFixed(2)}s, End: ${endTime.toFixed(2)}s`;
+                        
+                        setTimeout(function () {
+                            setCropper(videoPlayer);
+                        }, 1000);
+                        updateVideoPosition(100);
+                    };
+                    /*data.thumbnails.forEach((thumb, index) => {
+                        let img = document.createElement("img");
+                        img.src = thumb.url;
+                        img.className = "thumbnail";
+                        img.onclick = () => {
+                            if (index <= selectedEnd) {
+                                updateStartPoint(index);
+                            } else {
+                                updateEndPoint(index);
+                            }
+                        };
+                        document.getElementById("storyboard").appendChild(img);
+                    });*/
+                    loader.style.display = 'none';
+                });
+        });
+
+        // Function to update start point
+        function updateStartPoint(newStart) {
+            if (newStart < selectedEnd) {
+                selectedStart = newStart;
+                updateUI();
+            } else {
+                alert("Start point must be less than the end point.");
+            }
+        }
+
+        // Function to update end point
+        function updateEndPoint(newEnd) {
+            if (newEnd > selectedStart) {
+                selectedEnd = newEnd;
+                updateUI();
+            } else {
+                alert("End point must be greater than the start point.");
+            }
+        }
+
+
+        function selectTrimPoint(timestamp, imgElement) {
+            if (selectedStart === null || (selectedStart !== null && selectedEnd !== null)) {
+                selectedStart = timestamp;
+                clearSelection();
+                imgElement.classList.add('selected');
+            } else {
+                selectedEnd = timestamp;
+                imgElement.classList.add('selected');
+            }
+            updateUI();
+        }
+
+        function clearSelection() {
+            document.querySelectorAll('.thumbnail').forEach(img => img.classList.remove('selected'));
+        }
+
+        function updateUI() {
+            // Calculate the positions of the start and end boxes based on the selected points
+            let startLeft = selectedStart * 100;
+            let endLeft = selectedEnd * 100;
+
+            // Position the start and end boxes
+            startBox.style.left = startLeft + 'px';
+            endBox.style.left = endLeft + 'px';
+
+            // Optional: Highlight the range between start and end points on the thumbnails
+            document.querySelectorAll('.thumbnail').forEach((img, index) => {
+                if (index >= selectedStart && index <= selectedEnd) {
+                    img.classList.add('selected');
+                } else {
+                    img.classList.remove('selected');
+                }
+            });
+        }
+
+        document.getElementById('trimButton').addEventListener('click', function (e) {
+            e.preventDefault();
+
+            const loader = document.getElementById('loader3');
+            loader.style.display = 'inline-block'; // Show loader
+
+            var cropData = (cropper == null || cropper == undefined) ? null : cropper.getData();
+            console.log(cropData)
+            if (cropData == null) {
+                cropData.x = -1
+                cropData.y = -1
+                cropData.width = -1
+                cropData.height = -1
+            }
+            var startTime = selectedStart; // Assuming this holds your start time
+            var endTime = selectedEnd;     // Assuming this holds your end time
+            var videoFilename = videoFile; // Replace with actual filename or identifier
+
+            fetch('/trim_video', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ filename: videoFilename, start_time: startTime, end_time: endTime, crop_x: cropData.x, crop_y: cropData.y, crop_width: cropData.width, crop_height: cropData.height })
+            }).then(response => response.blob())
+                .then(blob => {
+                    var url = window.URL.createObjectURL(blob);
+                    var a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'trimmed_video.mp4';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    loader.style.display = 'none';
+                });
+        });
+
+
+        function removeStartBoxes() {
+            // Find the index of the current startBox
+            let startBoxIndex = Array.from(document.getElementById("storyboard").children).indexOf(startBox);
+
+            // Remove all thumbnail elements before the current startBox
+            let thumbnails = document.querySelectorAll('#storyboard .thumbnail');
+            for (let i = 0; i < startBoxIndex; i++) {
+                thumbnails[i].remove();
+            }
+
+            // Update selectedStart to the first thumbnail after the current startBox
+            selectedStart = startBoxIndex;
+            updateUI();
+        }
+
+        function removeEndBoxes() {
+            // Find the index of the current endBox
+            let endBoxIndex = Array.from(document.getElementById("storyboard").children).indexOf(endBox);
+
+            // Remove all thumbnail elements after the current endBox
+            let thumbnails = document.querySelectorAll('#storyboard .thumbnail');
+            for (let i = endBoxIndex + 1; i < thumbnails.length; i++) {
+                thumbnails[i].remove();
+            }
+
+            // Update selectedEnd to the last thumbnail before the current endBox
+            selectedEnd = endBoxIndex - 1;
+            updateUI();
+        }
+    </script>
+
+
+</body>
+
+</html>

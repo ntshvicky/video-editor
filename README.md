@@ -1,0 +1,1 @@
+to prevent from age restriction error on youtube download use pytube==12.0.0

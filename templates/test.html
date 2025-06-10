@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loader Inside Button</title>
+
+<style>
+  .range-slider {
+  position: relative;
+  width: 100%;
+  max-width: 400px; /* Adjust based on your needs */
+  height: 10px;
+  background: #ddd;
+}
+
+.slider-track, .slider-selected {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: #ccc;
+}
+
+.slider-track {
+  left: 0;
+  right: 0;
+}
+
+.slider-selected {
+  background: #4CAF50; /* Color for the selected range */
+}
+
+.thumb {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background: #333;
+  cursor: pointer;
+  top: -5px; /* Adjust so the thumb is centered vertically on the track */
+  margin-left: -10px; /* Adjust so the thumb is centered horizontally */
+  border-radius: 50%;
+}
+
+.thumb.end {
+  left: 100%;
+  margin-left: -10px;
+}
+
+</style>
+
+</head>
+<body>
+
+  <div class="video-slider-container">
+    <video id="videoElement" width="400" controls>
+      <source src="/uploads/Make Me Yours Mashup  SICKVED  Maan Meri Jaan  Apna Bana Le  Main Roya  Love Songs.mp4" type="video/mp4">
+      Your browser does not support the video tag.
+    </video>
+    <div class="range-slider" onmousedown="initDrag(event)">
+      <div class="slider-track"></div>
+      <div class="slider-selected"></div>
+      <div class="thumb start" id="startThumb"></div>
+      <div class="thumb end" id="endThumb"></div>
+    </div>
+    <div id="rangeValue">Start: 0%, End: 100%</div>
+  </div>
+
+  <button id="yourPlayButtonId">Play Selected Range</button>
+  
+  
+
+  <script>
+
+let startPercent = 0, endPercent = 100; // Default values for start and end
+const video = document.getElementById('videoElement');
+
+let dragging = false;
+let currentThumb;
+
+const initDrag = (e) => {
+  if (e.target.classList.contains('thumb')) {
+    dragging = true;
+    currentThumb = e.target;
+    document.addEventListener('mousemove', doDrag);
+    document.addEventListener('mouseup', stopDrag);
+  }
+};
+
+const doDrag = (e) => {
+  if (dragging) {
+    const slider = document.querySelector('.range-slider');
+    const rect = slider.getBoundingClientRect();
+    const offsetX = e.clientX - rect.left; // Mouse position inside the slider
+    const totalWidth = rect.width;
+    const positionPercent = Math.max(0, Math.min(100, (offsetX / totalWidth) * 100));
+    currentThumb.style.left = `${positionPercent}%`;
+    updateRange();
+    updateVideoPosition(positionPercent);
+  }
+};
+
+const stopDrag = () => {
+  dragging = false;
+  document.removeEventListener('mousemove', doDrag);
+  document.removeEventListener('mouseup', stopDrag);
+};
+
+const updateVideoPosition = (percent) => {
+  const duration = video.duration;
+  if (!duration) return; // Video metadata not loaded
+  const time = (percent / 100) * duration;
+  video.currentTime = time;
+};
+
+// Function to update the video playback range
+const updateRange = () => {
+  const slider = document.querySelector('.range-slider');
+  const rect = slider.getBoundingClientRect();
+  const startThumb = document.getElementById('startThumb');
+  const endThumb = document.getElementById('endThumb');
+  
+  startPercent = parseFloat(startThumb.style.left);
+  endPercent = parseFloat(endThumb.style.left);
+  
+  
+  const selectedRange = document.querySelector('.slider-selected');
+  selectedRange.style.left = `${startPercent}%`;
+  selectedRange.style.width = `${endPercent - startPercent}%`;
+
+  // Convert percent to time
+  const startTime = (startPercent / 100) * video.duration;
+  const endTime = (endPercent / 100) * video.duration;
+
+  document.getElementById('rangeValue').textContent = `Start: ${startTime.toFixed(2)}s, End: ${endTime.toFixed(2)}s`;
+};
+
+// Function to play video within the selected range
+const playVideoInRange = () => {
+  const startTime = (startPercent / 100) * video.duration;
+  const endTime = (endPercent / 100) * video.duration;
+
+  // Play video from the start time
+  video.currentTime = startTime;
+  video.play();
+
+  // Check regularly to stop video at the end time
+  const interval = setInterval(() => {
+    if (video.currentTime >= endTime || video.paused || video.ended) {
+      video.pause();
+      clearInterval(interval);
+    }
+  }, 100); // Check every 100 milliseconds
+};
+
+// Attach event listener to play button or any control you use to start video playback
+const playButton = document.getElementById('yourPlayButtonId'); // Make sure to add this button in your HTML
+playButton.addEventListener('click', playVideoInRange);
+
+
+
+  </script>
+  
+
+</body>
+</html>

@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Video Trimmer</title>
+
+    <!-- Cropper.js CSS -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css" rel="stylesheet"/>
+
+<!-- Cropper.js JavaScript -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+
+    <style>
+
+        #storyboard {
+            display: flex;
+            align-items: stretch;
+        }
+
+        .thumbnail {
+            /* Style for your thumbnails */
+            flex-grow: 0;
+            flex-shrink: 0;
+            flex-basis: 100px; /* Adjust based on your initial thumbnail size */
+        }
+
+        .dragger {
+            background-color: blue; /* Color of the dragger */
+            cursor: ew-resize;
+            width: 5px; /* Width of the draggable border */
+        }
+
+        .thumbnail-container {
+            position: relative;
+            white-space: nowrap;
+            overflow-x: auto;
+            padding: 10px;
+        }
+        
+        .thumbnail-container img {
+            width: 100px; /* Adjust the size as needed */
+            height: auto;
+            margin-right: 5px;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+        
+
+        .thumbnail-container img.selected {
+            border-color: blue;
+            border-width: 5px;
+        }
+        .cropper-container {
+            width: 640px;
+            height: 358px;
+        }
+        #videoPreview {
+            width: 640px;
+            height: 358px;
+        }
+
+        .close-button {
+            position: absolute;
+            top: 0;
+            right: 0;
+            border: none;
+            background-color: red;
+            color: white;
+            cursor: pointer;
+        }
+
+        </style>
+        
+</head>
+<body>
+    <h1>Trim Your Video</h1>
+    Youtube Video URL : <input type="text" id="youtube_url" name="youtube_url" required /><br/>
+    <button id="downloadButton">Download Video</button>
+    OR<br/><br/><br/>
+    <form id="trimForm" method="post" enctype="multipart/form-data">
+        <input type="file" name="video" required />
+        <br/><br/>
+        <video id="videoPreview" controls>
+            <source src="path_to_your_video.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+        <br/><br/>
+        <div>
+            <button id="uploadButton">Upload Video</button>
+        </div>
+        <br/>
+        <br/>
+        <div id="cropperWrapper" style="width: 640px; height: 358px;">
+            <canvas id="videoCanvas"></canvas>
+        </div>
+    </form>
+    <br/><br/><br/>
+    <div id="storyboard" class="thumbnail-container">
+            <!-- Thumbnails will be inserted here -->
+        </div>
+        
+        <div id="startBox" class="drag-box">
+            <button class="close-button" onclick="removeStartBoxes()">X</button>
+        </div>
+        <div id="endBox" class="drag-box">
+            <button class="close-button" onclick="removeEndBoxes()">X</button>
+        </div>
+
+    <br/><br/><br/><br/>
+    <button id="trimButton">Trim Video</button>
+
+    <script>
+
+        let videoFile;
+
+        var cropper;
+
+
+        let selectedStart = 0;
+        let selectedEnd = 10;
+
+
+        function setCropper(video) {
+            // Create or get existing canvas
+            var canvas = document.getElementById('videoCanvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Initialize Cropper on the canvas
+            if (cropper) {
+                cropper.destroy(); // Destroy existing cropper instance if it exists
+            }
+            
+            cropper = new Cropper(canvas, {
+                aspectRatio: 16 / 9,
+                crop(event) {
+                    console.log(event.detail.x, event.detail.y, event.detail.width, event.detail.height);
+                    // Save these values for the cropping operation
+                },
+            });
+        }
+
+        document.getElementById('trimForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            var formData = new FormData(this);
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            }).then(response => response.json())
+            .then(data => {
+                
+                videoFile = data.video_file;
+                var videoPlayer = document.getElementById('videoPreview');
+                videoPlayer.src = "http://localhost:5001/uploads/" + videoFile;
+                videoPlayer.load();
+                // Event listener for when the video's metadata is loaded
+                
+                videoPlayer.onloadedmetadata = function() {
+                    setTimeout(function() {
+                        setCropper(videoPlayer);
+                    }, 1000);
+                };
+                data.thumbnails.forEach((thumb, index) => {
+                    let img = document.createElement("img");
+                    img.src = thumb.url;
+                    img.className = "thumbnail";
+                    img.onclick = () => {
+                        if (index <= selectedEnd) {
+                            updateStartPoint(index);
+                        } else {
+                            updateEndPoint(index);
+                        }
+                    };
+                    document.getElementById("storyboard").appendChild(img);
+                });
+            });
+        });
+
+
+
+        document.getElementById('downloadButton').addEventListener('click', function(e) {
+            e.preventDefault();
+
+            var youtube_url = document.getElementById('youtube_url').value; // Assuming this holds your start time
+
+            fetch('/download_youtube_video', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ youtube_url: youtube_url })
+            }).then(response => response.json())
+            .then(data => {
+                videoFile = data.video_file;
+                var videoPlayer = document.getElementById('videoPreview');
+                videoPlayer.src = "http://localhost:5001/uploads/" + videoFile;
+                videoPlayer.load();
+                // Event listener for when the video's metadata is loaded
+                
+                videoPlayer.onloadedmetadata = function() {
+                    setTimeout(function() {
+                        setCropper(videoPlayer);
+                    }, 1000);
+                };
+                data.thumbnails.forEach((thumb, index) => {
+                    let img = document.createElement("img");
+                    img.src = thumb.url;
+                    img.className = "thumbnail";
+                    img.onclick = () => {
+                        if (index <= selectedEnd) {
+                            updateStartPoint(index);
+                        } else {
+                            updateEndPoint(index);
+                        }
+                    };
+                    document.getElementById("storyboard").appendChild(img);
+                });
+            });
+        });
+        
+        // Function to update start point
+        function updateStartPoint(newStart) {
+            if (newStart < selectedEnd) {
+                selectedStart = newStart;
+                updateUI();
+            } else {
+                alert("Start point must be less than the end point.");
+            }
+        }
+
+        // Function to update end point
+        function updateEndPoint(newEnd) {
+            if (newEnd > selectedStart) {
+                selectedEnd = newEnd;
+                updateUI();
+            } else {
+                alert("End point must be greater than the start point.");
+            }
+        }
+
+
+        function selectTrimPoint(timestamp, imgElement) {
+            if (selectedStart === null || (selectedStart !== null && selectedEnd !== null)) {
+                selectedStart = timestamp;
+                clearSelection();
+                imgElement.classList.add('selected');
+            } else {
+                selectedEnd = timestamp;
+                imgElement.classList.add('selected');
+            }
+            updateUI();
+        }
+
+        function clearSelection() {
+            document.querySelectorAll('.thumbnail').forEach(img => img.classList.remove('selected'));
+        }
+
+        function updateUI() {
+            // Calculate the positions of the start and end boxes based on the selected points
+            let startLeft = selectedStart * 100;
+            let endLeft = selectedEnd * 100;
+
+            // Position the start and end boxes
+            startBox.style.left = startLeft + 'px';
+            endBox.style.left = endLeft + 'px';
+
+            // Optional: Highlight the range between start and end points on the thumbnails
+            document.querySelectorAll('.thumbnail').forEach((img, index) => {
+                if (index >= selectedStart && index <= selectedEnd) {
+                    img.classList.add('selected');
+                } else {
+                    img.classList.remove('selected');
+                }
+            });
+        }
+
+        document.getElementById('trimButton').addEventListener('click', function(e) {
+            e.preventDefault();
+
+            var cropData = (cropper == null || cropper == undefined)? null: cropper.getData();
+            if(cropData == null) {
+                cropData.x = -1
+                cropData.y = -1
+                cropData.width = -1
+                cropData.height = -1
+            }
+            var startTime = selectedStart; // Assuming this holds your start time
+            var endTime = selectedEnd;     // Assuming this holds your end time
+            var videoFilename = videoFile; // Replace with actual filename or identifier
+
+            fetch('/trim_video', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ filename: videoFilename, start_time: startTime, end_time: endTime, crop_x: cropData.x, crop_y: cropData.y, crop_width: cropData.width, crop_height: cropData.height })
+            }).then(response => response.blob())
+            .then(blob => {
+                var url = window.URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = 'trimmed_video.mp4';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            });
+        });
+
+
+        function removeStartBoxes() {
+            // Find the index of the current startBox
+            let startBoxIndex = Array.from(document.getElementById("storyboard").children).indexOf(startBox);
+
+            // Remove all thumbnail elements before the current startBox
+            let thumbnails = document.querySelectorAll('#storyboard .thumbnail');
+            for (let i = 0; i < startBoxIndex; i++) {
+                thumbnails[i].remove();
+            }
+
+            // Update selectedStart to the first thumbnail after the current startBox
+            selectedStart = startBoxIndex;
+            updateUI();
+        }
+
+        function removeEndBoxes() {
+            // Find the index of the current endBox
+            let endBoxIndex = Array.from(document.getElementById("storyboard").children).indexOf(endBox);
+
+            // Remove all thumbnail elements after the current endBox
+            let thumbnails = document.querySelectorAll('#storyboard .thumbnail');
+            for (let i = endBoxIndex + 1; i < thumbnails.length; i++) {
+                thumbnails[i].remove();
+            }
+
+            // Update selectedEnd to the last thumbnail before the current endBox
+            selectedEnd = endBoxIndex - 1;
+            updateUI();
+        }
+    </script>
+</body>
+</html>
