@@ -101,6 +101,21 @@ Open:
 http://127.0.0.1:5002
 ```
 
+## Deploy On Vercel
+
+This app can be imported into Vercel from GitHub:
+
+```text
+https://github.com/ntshvicky/video-editor
+```
+
+Vercel supports Flask through its Python runtime. This repository includes:
+
+- `.python-version` to request Python `3.12`
+- `.vercelignore` to exclude generated media folders from the deployment bundle
+
+Important: Vercel serverless functions are best for the UI, lightweight conversion tests, and AI API calls. Long FFmpeg renders, YouTube downloads, and large video conversions should move to background workers or a dedicated media-processing service for production.
+
 ## Routes
 
 ```text
