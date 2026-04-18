@@ -18,10 +18,11 @@ except ModuleNotFoundError:
 
 
 BASE_DIR = Path(__file__).resolve().parent
-UPLOAD_DIR = BASE_DIR / "uploads"
-THUMBNAIL_DIR = BASE_DIR / "thumbnails"
-TRIMMED_DIR = BASE_DIR / "trimmed"
-GENERATED_DIR = BASE_DIR / "generated"
+MEDIA_ROOT = Path(os.environ.get("MEDIA_ROOT") or ("/tmp/video-editor" if os.environ.get("VERCEL") else BASE_DIR))
+UPLOAD_DIR = MEDIA_ROOT / "uploads"
+THUMBNAIL_DIR = MEDIA_ROOT / "thumbnails"
+TRIMMED_DIR = MEDIA_ROOT / "trimmed"
+GENERATED_DIR = MEDIA_ROOT / "generated"
 
 ALLOWED_VIDEO_EXTENSIONS = {
     ".avi",

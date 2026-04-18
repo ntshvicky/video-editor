@@ -13,3 +13,4 @@ generated/*
 !trimmed/.gitkeep
 !thumbnails/.gitkeep
 !generated/.gitkeep
+.vercel
