@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Media Tools</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="static/style.css?v=0.6" rel="stylesheet" />
+</head>
+
+<body>
+    <div class="app-shell">
+        <header class="topbar">
+            <div>
+                <p class="eyebrow">Media Studio</p>
+                <h1>Convert, edit, generate, and bring assets back into your workflow.</h1>
+            </div>
+            <nav class="tool-nav" aria-label="Editing tools">
+                <a href="/" class="{{ 'active' if active_tool == 'editor' else '' }}">Trim & Crop</a>
+                <a href="/convert_video_ext" class="{{ 'active' if active_tool == 'video' else '' }}">Convert Video</a>
+                <a href="/convert_image_ext" class="{{ 'active' if active_tool == 'image' else '' }}">Convert Image</a>
+                <a href="/generate_ai_images" class="{{ 'active' if active_tool == 'ai_image' else '' }}">AI Images</a>
+                <a href="/generate_ai_video" class="{{ 'active' if active_tool == 'ai_video' else '' }}">AI Videos</a>
+            </nav>
+        </header>
+
+        <main class="workspace">
+            {% if active_tool == 'video' %}
+            <section class="tool-panel">
+                <div class="pane-heading">
+                    <div>
+                        <p class="eyebrow">Video converter</p>
+                        <h2>Export video or extract audio</h2>
+                    </div>
+                </div>
+                <form id="videoConvertForm" class="tool-form" enctype="multipart/form-data">
+                    <label class="input-field">Video file
+                        <input name="video" type="file" accept="video/*" required>
+                    </label>
+                    <label class="select-field">Mode
+                        <select name="mode" id="videoMode">
+                            <option value="video">Convert video</option>
+                            <option value="audio">Convert video to audio</option>
+                        </select>
+                    </label>
+                    <label class="select-field">Output format
+                        <select name="output_format" id="videoOutputFormat">
+                            <option value="mp4">MP4</option>
+                            <option value="webm">WebM</option>
+                            <option value="mov">MOV</option>
+                            <option value="mkv">MKV</option>
+                            <option value="gif">GIF</option>
+                        </select>
+                    </label>
+                    <button class="render-action" type="submit">Convert</button>
+                </form>
+                <div id="toolStatus" class="status-message">Choose a video to begin.</div>
+            </section>
+            {% elif active_tool == 'image' %}
+            <section class="tool-panel">
+                <div class="pane-heading">
+                    <div>
+                        <p class="eyebrow">Image editor</p>
+                        <h2>Convert, crop, and resize images</h2>
+                    </div>
+                </div>
+                <form id="imageConvertForm" class="tool-form" enctype="multipart/form-data">
+                    <label class="input-field">Image file
+                        <input id="imageInput" name="image" type="file" accept="image/*" required>
+                    </label>
+                    <label class="select-field">Output format
+                        <select name="output_format">
+                            <option value="png">PNG</option>
+                            <option value="jpg">JPG</option>
+                            <option value="webp">WebP</option>
+                            <option value="bmp">BMP</option>
+                            <option value="tiff">TIFF</option>
+                        </select>
+                    </label>
+                    <label class="input-field">Resize width
+                        <input name="resize_width" type="number" min="1" placeholder="Auto">
+                    </label>
+                    <label class="input-field">Resize height
+                        <input name="resize_height" type="number" min="1" placeholder="Auto">
+                    </label>
+                    <label class="toggle-option">
+                        <input id="imageUseCrop" type="checkbox">
+                        <span>Apply crop</span>
+                    </label>
+                    <div class="image-crop-grid">
+                        <label class="input-field">Crop X<input name="crop_x" type="number" min="0" value="0"></label>
+                        <label class="input-field">Crop Y<input name="crop_y" type="number" min="0" value="0"></label>
+                        <label class="input-field">Crop width<input name="crop_width" type="number" min="1" placeholder="Full"></label>
+                        <label class="input-field">Crop height<input name="crop_height" type="number" min="1" placeholder="Full"></label>
+                    </div>
+                    <img id="imagePreview" class="image-preview" alt="Selected image preview" hidden>
+                    <button class="render-action" type="submit">Export image</button>
+                </form>
+                <div id="toolStatus" class="status-message">Choose an image to begin.</div>
+            </section>
+            {% elif active_tool == 'ai_image' %}
+            <section class="tool-panel">
+                <div class="pane-heading">
+                    <div>
+                        <p class="eyebrow">AI image generator</p>
+                        <h2>Create images for editing</h2>
+                    </div>
+                </div>
+                <form id="aiImageForm" class="tool-form">
+                    <label class="input-field wide">OpenAI API key
+                        <input name="api_key" type="password" placeholder="sk-..." autocomplete="off" required>
+                    </label>
+                    <label class="input-field wide">Prompt
+                        <input name="prompt" type="text" placeholder="A cinematic product shot on a rainy neon street" required>
+                    </label>
+                    <label class="select-field">Size
+                        <select name="size">
+                            <option value="1024x1024">Square 1024</option>
+                            <option value="1536x1024">Landscape</option>
+                            <option value="1024x1536">Portrait</option>
+                        </select>
+                    </label>
+                    <label class="select-field">Format
+                        <select name="format">
+                            <option value="png">PNG</option>
+                            <option value="webp">WebP</option>
+                            <option value="jpeg">JPEG</option>
+                        </select>
+                    </label>
+                    <label class="select-field">Quality
+                        <select name="quality">
+                            <option value="medium">Medium</option>
+                            <option value="low">Low</option>
+                            <option value="high">High</option>
+                        </select>
+                    </label>
+                    <button class="render-action" type="submit">Generate image</button>
+                </form>
+                <div id="aiResult" class="ai-result"></div>
+                <div id="toolStatus" class="status-message">Enter your OpenAI API key here. It is sent only with this request and is not saved.</div>
+            </section>
+            {% elif active_tool == 'ai_video' %}
+            <section class="tool-panel">
+                <div class="pane-heading">
+                    <div>
+                        <p class="eyebrow">AI video generator</p>
+                        <h2>Create a Sora video job</h2>
+                    </div>
+                </div>
+                <form id="aiVideoForm" class="tool-form">
+                    <label class="input-field wide">OpenAI API key
+                        <input name="api_key" type="password" placeholder="sk-..." autocomplete="off" required>
+                    </label>
+                    <label class="input-field wide">Prompt
+                        <input name="prompt" type="text" placeholder="A dancer spins through soft studio light, slow motion" required>
+                    </label>
+                    <label class="select-field">Model
+                        <select name="model">
+                            <option value="sora-2">Sora 2</option>
+                            <option value="sora-2-pro">Sora 2 Pro</option>
+                        </select>
+                    </label>
+                    <label class="select-field">Size
+                        <select name="size">
+                            <option value="1280x720">1280x720</option>
+                            <option value="720x1280">720x1280</option>
+                        </select>
+                    </label>
+                    <label class="input-field">Seconds
+                        <input name="seconds" type="number" min="4" max="12" value="4">
+                    </label>
+                    <button class="render-action" type="submit">Create video job</button>
+                </form>
+                <pre id="aiVideoResult" class="job-output"></pre>
+                <div id="toolStatus" class="status-message">Enter your OpenAI API key here. It is sent only with this request and is not saved.</div>
+            </section>
+            {% endif %}
+        </main>
+    </div>
+
+    <script>
+        const statusEl = document.getElementById('toolStatus');
+        function setToolStatus(message, type = 'info') {
+            statusEl.textContent = message;
+            statusEl.className = `status-message ${type}`;
+        }
+
+        async function downloadResponse(response, fallbackName) {
+            if (!response.ok) {
+                const data = await parseToolJson(response);
+                throw new Error(data.error || 'Request failed.');
+            }
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = fallbackName;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        async function parseToolJson(response) {
+            const text = await response.text();
+            try {
+                return JSON.parse(text);
+            } catch (error) {
+                throw new Error(text.startsWith('<') ? 'The server returned an HTML error page. Check the Flask terminal for details.' : text);
+            }
+        }
+
+        const videoMode = document.getElementById('videoMode');
+        const videoOutputFormat = document.getElementById('videoOutputFormat');
+        if (videoMode) {
+            videoMode.addEventListener('change', () => {
+                const options = videoMode.value === 'audio'
+                    ? [['mp3', 'MP3'], ['wav', 'WAV'], ['m4a', 'M4A'], ['aac', 'AAC']]
+                    : [['mp4', 'MP4'], ['webm', 'WebM'], ['mov', 'MOV'], ['mkv', 'MKV'], ['gif', 'GIF']];
+                videoOutputFormat.innerHTML = options.map(([value, label]) => `<option value="${value}">${label}</option>`).join('');
+            });
+            document.getElementById('videoConvertForm').addEventListener('submit', async (event) => {
+                event.preventDefault();
+                setToolStatus('Converting media...', 'info');
+                try {
+                    await downloadResponse(await fetch('/api/convert_video', { method: 'POST', body: new FormData(event.target) }), `converted.${videoOutputFormat.value}`);
+                    setToolStatus('Conversion complete. Download started.', 'success');
+                } catch (error) {
+                    setToolStatus(error.message, 'error');
+                }
+            });
+        }
+
+        const imageInput = document.getElementById('imageInput');
+        if (imageInput) {
+            imageInput.addEventListener('change', () => {
+                const preview = document.getElementById('imagePreview');
+                const file = imageInput.files[0];
+                if (!file) return;
+                preview.src = URL.createObjectURL(file);
+                preview.hidden = false;
+            });
+            document.getElementById('imageConvertForm').addEventListener('submit', async (event) => {
+                event.preventDefault();
+                setToolStatus('Exporting image...', 'info');
+                const formData = new FormData(event.target);
+                formData.set('use_crop', document.getElementById('imageUseCrop').checked ? 'true' : 'false');
+                try {
+                    await downloadResponse(await fetch('/api/convert_image', { method: 'POST', body: formData }), `image.${formData.get('output_format')}`);
+                    setToolStatus('Image export complete. Download started.', 'success');
+                } catch (error) {
+                    setToolStatus(error.message, 'error');
+                }
+            });
+        }
+
+        const aiImageForm = document.getElementById('aiImageForm');
+        if (aiImageForm) {
+            aiImageForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                setToolStatus('Generating image...', 'info');
+                const formData = new FormData(event.target);
+                try {
+                    const response = await fetch('/api/generate_ai_image', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(Object.fromEntries(formData)),
+                    });
+                    const data = await parseToolJson(response);
+                    if (!response.ok) throw new Error(data.error || 'Image generation failed.');
+                    document.getElementById('aiResult').innerHTML = `<img src="${data.url}" alt="Generated image"><a class="secondary-action" href="${data.url}" download="${data.filename}">Download image</a><a class="secondary-action" href="/convert_image_ext">Open image tools</a><button class="secondary-action" type="button" id="sendImageToEditor">Create editable video</button>`;
+                    document.getElementById('sendImageToEditor').addEventListener('click', async () => {
+                        setToolStatus('Creating editable video from generated image...', 'info');
+                        const videoResponse = await fetch('/api/generated_image_to_video', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ filename: data.filename, duration: 5 }),
+                        });
+                        const videoData = await videoResponse.json();
+                        if (!videoResponse.ok) throw new Error(videoData.error || 'Could not create editable video.');
+                        window.localStorage.setItem('pendingVideoFile', videoData.video_file);
+                        window.location.href = '/';
+                    });
+                    setToolStatus('Image generated. Download it or open image tools.', 'success');
+                } catch (error) {
+                    setToolStatus(error.message, 'error');
+                }
+            });
+        }
+
+        const aiVideoForm = document.getElementById('aiVideoForm');
+        if (aiVideoForm) {
+            aiVideoForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                setToolStatus('Creating video job...', 'info');
+                const formData = new FormData(event.target);
+                try {
+                    const response = await fetch('/api/generate_ai_video', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(Object.fromEntries(formData)),
+                    });
+                    const data = await parseToolJson(response);
+                    if (!response.ok) throw new Error(data.error || 'Video generation failed.');
+                    document.getElementById('aiVideoResult').textContent = JSON.stringify(data, null, 2);
+                    setToolStatus('Video job created. Polling/download UI is the next step.', 'success');
+                } catch (error) {
+                    setToolStatus(error.message, 'error');
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>

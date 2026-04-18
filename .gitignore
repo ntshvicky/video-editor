@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.DS_Store
+
+uploads/*
+trimmed/*
+thumbnails/*
+generated/*
+!uploads/.gitkeep
+!trimmed/.gitkeep
+!thumbnails/.gitkeep
+!generated/.gitkeep

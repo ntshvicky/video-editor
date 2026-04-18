@@ -1,173 +1,207 @@
-import uuid
 from flask import Flask, jsonify, render_template, request, send_file, send_from_directory
-from moviepy.editor import VideoFileClip
-from werkzeug.utils import secure_filename
-import subprocess
-import os
 from flask_cors import CORS
-from pytube import YouTube
+
+from media_services import (
+    MediaProcessingError,
+    build_thumbnail_payload,
+    convert_image_file,
+    convert_video_file,
+    create_sora_video_job,
+    download_youtube_clip,
+    ensure_media_dirs,
+    extract_thumbnails,
+    generate_ai_image,
+    generated_file_url,
+    image_to_video_clip,
+    resolve_upload_path,
+    save_uploaded_video,
+    trim_video,
+)
+
 
 app = Flask(__name__)
 CORS(app)
+ensure_media_dirs()
 
-@app.route('/', methods=['GET'])
+
+def json_error(message, status_code=400):
+    return jsonify({"error": message}), status_code
+
+
+def video_response(filename, video_path):
+    thumbnails = extract_thumbnails(video_path)
+    return jsonify(
+        {
+            "thumbnails": build_thumbnail_payload(thumbnails, request.host_url),
+            "video_file": filename,
+        }
+    )
+
+
+@app.route("/", methods=["GET"])
 def index():
-    return render_template('index.html')
-
-def extract_thumbnails(video_path, interval=1):
-    clip = VideoFileClip(video_path)
-    thumbnails = []
-    for i in range(0, int(clip.duration), interval):
-        frame = clip.get_frame(i)
-        thumbnail_path = f'thumbnails/frame_{i}.jpg'
-        clip.save_frame(thumbnail_path, i)
-        thumbnails.append(thumbnail_path)
-    return thumbnails
+    return render_template("index.html")
 
 
-def get_video_format(video_file):
-    """
-    Get the format of the input video file using ffprobe.
-    """
-    command = ['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=codec_name', '-of', 'default=noprint_wrappers=1:nokey=1', video_file]
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    output, error = process.communicate()
-    if process.returncode == 0:
-        return output.decode().strip()
-    else:
-        print(f"Error: {error.decode().strip()}")
-        return None
-
-def convert_video(input_file, output_file, output_format='mp4'):
-    """
-    Convert the input video file to the specified output format using FFmpeg.
-    """
-    current_format = get_video_format(input_file)
-    print("1", current_format)
-    if current_format is None:
-        print("Failed to determine current format. Conversion aborted.")
-        return
-    
-    # Check if the input and output formats are the same
-    if current_format == output_format:
-        print("2", output_format)
-        print("Input and output formats are the same. No conversion needed.")
-        return
-
-    # Run FFmpeg to convert the video
-    command = ['ffmpeg', '-i', input_file, '-c', 'copy', output_file]
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    _, error = process.communicate()
-    if process.returncode == 0:
-        print("Conversion successful.")
-    else:
-        print(f"Conversion failed: {error.decode().strip()}")
+@app.route("/convert_video_ext", methods=["GET"])
+def convert_video_page():
+    return render_template("tools.html", active_tool="video")
 
 
-@app.route('/upload', methods=['POST'])
+@app.route("/convert_image_ext", methods=["GET"])
+def convert_image_page():
+    return render_template("tools.html", active_tool="image")
+
+
+@app.route("/generate_ai_images", methods=["GET"])
+def ai_images_page():
+    return render_template("tools.html", active_tool="ai_image")
+
+
+@app.route("/generate_ai_video", methods=["GET"])
+def ai_video_page():
+    return render_template("tools.html", active_tool="ai_video")
+
+
+@app.route("/upload", methods=["POST"])
 def upload_file():
-    if 'video' not in request.files:
-        return 'No video part', 400
-    file = request.files['video']
-    if file.filename == '':
-        return 'No selected video', 400
-
-    if file:
-        filename = str(uuid.uuid4()).replace("-", "")[:8] + "." + secure_filename(file.filename).split('.')[-1]
-        video_path = os.path.join('uploads', filename)
-        file.save(video_path)
-        vf = get_video_format(video_path)
-        print("==", vf)
-        if vf is None:
-            return jsonify({'error': 'Failed to determine video format'}), 400
-        if vf.lower()!= 'mp4' and vf.lower()!= 'h264':
-            input_path = video_path
-            filename = filename.split('.')[0] + '.mp4'
-            output_path = os.path.join('uploads', filename)
-            convert_video(input_path, output_path, output_format='mp4')
-            print(input_path, output_path)
-            video_path = output_path
-        
-        thumbnails = extract_thumbnails(video_path)
-        # Create a list of thumbnail info
-        thumbnail_info = []
-        for i, thumbnail_path in enumerate(thumbnails):
-            thumbnail_info.append({
-                "url": f"{request.host_url}{thumbnail_path}",  # Adjust the URL as per your server setup
-                "timestamp": i  # Assuming one thumbnail per second
-            })
-
-        return jsonify({'thumbnails': thumbnail_info, 'video_file': filename})
-    
-@app.route('/trim_video', methods=['POST'])
-def trim_video():
-    data = request.get_json()
-    filename = data['filename']
-    start_time = float(data['start_time'])
-    end_time = float(data['end_time'])
-    crop_x = float(data['crop_x']) if data['crop_x'] != -1 else None
-    crop_y = float(data['crop_y']) if data['crop_y']!= -1 else None
-    crop_width = float(data['crop_width']) if data['crop_width']!= -1 else None
-    crop_height = float(data['crop_height']) if data['crop_height']!= -1 else None
-
-
-    print(filename, start_time, end_time, crop_x, crop_y, crop_width, crop_height, request.host_url)
-    
-    source_path = os.path.join('uploads', filename)  # Adjust path as necessary
-    if not os.path.exists(source_path):
-        return jsonify({'error': 'File not found'}), 404
-
-    with VideoFileClip(source_path) as video:
-
-        cropped_video = video
-        if crop_x is not None:
-            cropped_video = video.crop(x1=crop_x, y1=crop_y, width=crop_width, height=crop_height)
-        
-        trimmed = cropped_video.subclip(start_time, end_time)
-        output_path = os.path.join('trimmed', filename)
-        trimmed.write_videofile(output_path, codec="libx264", audio_codec="aac")
-
-    return send_file(output_path, as_attachment=True)
-
-@app.route('/download_youtube_video', methods=['POST'])
-def download_youtube_video():
     try:
-        url = request.get_json()['youtube_url']
-        yt = YouTube(url, use_oauth=False, allow_oauth_cache=True)
-        video = yt.streams.filter(progressive=True, file_extension='mp4').order_by('resolution').desc().first()
-        if video:
-            rs = video.download("uploads")
-            video_name = rs.split("/")[-1]
-            print(f"Video downloaded successfully: {video.title}")
-            video_path = os.path.join('uploads', video_name)
-            thumbnails = extract_thumbnails(video_path)
-            # Create a list of thumbnail info
-            thumbnail_info = []
-            for i, thumbnail_path in enumerate(thumbnails):
-                thumbnail_info.append({
-                    "url": f"{request.host_url}{thumbnail_path}",  # Adjust the URL as per your server setup
-                    "timestamp": i  # Assuming one thumbnail per second
-                })
-
-            return jsonify({'thumbnails': thumbnail_info, 'video_file': video_name}), 200
-        else:
-            print("No video streams available")
-            return jsonify({'error': "No video streams available"}), 400
-            
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return jsonify({'error': f"An error occurred: {e}"}), 400
+        filename, video_path = save_uploaded_video(request.files.get("video"))
+        return video_response(filename, video_path)
+    except MediaProcessingError as exc:
+        return json_error(str(exc), 400)
 
 
-@app.route('/thumbnails/<filename>')
+@app.route("/api/load_video/<path:filename>", methods=["GET"])
+def load_video_api(filename):
+    try:
+        video_path = resolve_upload_path(filename)
+        if not video_path.exists():
+            return json_error("Video file was not found.", 404)
+        return video_response(video_path.name, video_path)
+    except MediaProcessingError as exc:
+        return json_error(str(exc), 400)
+
+
+@app.route("/trim_video", methods=["POST"])
+def trim_video_route():
+    try:
+        output_path = trim_video(request.get_json(silent=True) or {})
+        return send_file(output_path, as_attachment=True, download_name="trimmed_video.mp4")
+    except MediaProcessingError as exc:
+        return json_error(str(exc), 400)
+
+
+@app.route("/download_youtube_video", methods=["POST"])
+def download_youtube_video():
+    data = request.get_json(silent=True) or {}
+    url = data.get("youtube_url", "").strip()
+    if not url:
+        return json_error("Enter a YouTube URL.", 400)
+
+    try:
+        filename, video_path = download_youtube_clip(url)
+        return video_response(filename, video_path)
+    except MediaProcessingError as exc:
+        return json_error(str(exc), 400)
+
+
+@app.route("/api/convert_video", methods=["POST"])
+def convert_video_api():
+    try:
+        output_path = convert_video_file(
+            request.files.get("video"),
+            request.form.get("output_format"),
+            extract_audio=request.form.get("mode") == "audio",
+        )
+        return send_file(output_path, as_attachment=True, download_name=output_path.name)
+    except MediaProcessingError as exc:
+        return json_error(str(exc), 400)
+
+
+@app.route("/api/convert_image", methods=["POST"])
+def convert_image_api():
+    try:
+        crop = None
+        if request.form.get("use_crop") == "true":
+            crop = {
+                "x": request.form.get("crop_x"),
+                "y": request.form.get("crop_y"),
+                "width": request.form.get("crop_width"),
+                "height": request.form.get("crop_height"),
+            }
+        output_path = convert_image_file(
+            request.files.get("image"),
+            request.form.get("output_format"),
+            resize_width=request.form.get("resize_width"),
+            resize_height=request.form.get("resize_height"),
+            crop=crop,
+        )
+        return send_file(output_path, as_attachment=True, download_name=output_path.name)
+    except MediaProcessingError as exc:
+        return json_error(str(exc), 400)
+
+
+@app.route("/api/generate_ai_image", methods=["POST"])
+def generate_ai_image_api():
+    data = request.get_json(silent=True) or {}
+    try:
+        output_path = generate_ai_image(
+            data.get("prompt"),
+            size=data.get("size", "1024x1024"),
+            output_format=data.get("format", "png"),
+            quality=data.get("quality", "medium"),
+            api_key=data.get("api_key"),
+        )
+        return jsonify({"url": generated_file_url(output_path.name), "filename": output_path.name})
+    except MediaProcessingError as exc:
+        return json_error(str(exc), 400)
+    except Exception as exc:
+        return json_error(f"AI image generation failed: {exc}", 500)
+
+
+@app.route("/api/generated_image_to_video", methods=["POST"])
+def generated_image_to_video_api():
+    data = request.get_json(silent=True) or {}
+    try:
+        filename, video_path = image_to_video_clip(data.get("filename"), data.get("duration", 5))
+        return jsonify({"video_file": filename, "editor_url": "/"})
+    except MediaProcessingError as exc:
+        return json_error(str(exc), 400)
+
+
+@app.route("/api/generate_ai_video", methods=["POST"])
+def generate_ai_video_api():
+    data = request.get_json(silent=True) or {}
+    try:
+        job = create_sora_video_job(
+            data.get("prompt"),
+            size=data.get("size", "1280x720"),
+            seconds=data.get("seconds", 4),
+            model=data.get("model", "sora-2"),
+            api_key=data.get("api_key"),
+        )
+        return jsonify(job)
+    except MediaProcessingError as exc:
+        return json_error(str(exc), 400)
+    except Exception as exc:
+        return json_error(f"AI video generation failed: {exc}", 500)
+
+
+@app.route("/thumbnails/<path:filename>")
 def thumbnails_file(filename):
-    return send_from_directory("thumbnails",
-                               filename)
+    return send_from_directory("thumbnails", filename)
 
-@app.route('/uploads/<filename>')
+
+@app.route("/uploads/<path:filename>")
 def uploaded_file(filename):
-    return send_from_directory("uploads",
-                               filename)
+    return send_from_directory("uploads", filename)
 
-if __name__ == '__main__':
+
+@app.route("/generated/<path:filename>")
+def generated_file(filename):
+    return send_from_directory("generated", filename)
+
+
+if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5002, debug=True)

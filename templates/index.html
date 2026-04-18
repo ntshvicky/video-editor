@@ -6,441 +6,540 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <link href="static/style.css?v=0.2" rel="stylesheet" />
-
-    <!-- BootStrap CSS/Js -->
+    <link href="static/style.css?v=0.5" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
-    <!-- Cropper.js CSS -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css" rel="stylesheet" />
-
-    <!-- Cropper.js JavaScript -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
-
 </head>
 
 <body>
-
-    <div class="header">
-        <h1>Free Video Editor</h1>
-        <p>Download youtube videos or upload your own videos, and edit.</p>
-    </div>
-
-    <div class="navbar">
-        <a href="/" class="active">Trim & Crop</a>
-        <a href="/convert_video_ext">Convert Video Extension</a>
-        <a href="/convert_image_ext">Convert Image Extension</a>
-        <a href="/generate_ai_images">Generate AI Images</a>
-        <a href="generate_ai_video">Generate AI Videos</a>
-    </div>
-
-    <div class="row main-container">
-        <div class="col-md-12">
-
-            <div class="form-group row">
-                <div class="col-sm-12 mb-3 mt-3">
-                    <form id="trimForm" method="post" enctype="multipart/form-data" class="container">
-                        <div class="form-group row mb-3 mt-3">
-                            <div class="col-sm-8">
-                                <div class="form-floating">
-                                    <input type="text" class="form-control input-sm" id="youtube_url"
-                                        placeholder="Enter Youtube URL" name="youtube_url">
-                                    <label for="youtube_url">Enter Youtube URL</label>
-                                </div>
-                            </div>
-                            <div class="col-sm-4">
-                                <button id="downloadButton" class="btn btn-info btn-lg"><span class="loader"
-                                        id="loader1"></span> Download Video</button>
-                            </div>
-                        </div>
-                        <div class="form-group row mb-3 mt-3">
-                            <div class="col-sm-8">
-                                <input type="file" name="video" required accept="video/*"
-                                    class="form-control input-sm" />
-                            </div>
-                            <div class="col-sm-4">
-                                <button id="uploadButton" class="btn btn-info"><span class="loader" id="loader2"></span>
-                                    Upload Video</button>
-                            </div>
-                        </div>
-
-                        <div class="form-group row mb-3 mt-3" id="videoPlayerDiv" style="display: none;">
-                            <div class="col-sm-6">
-                                <video id="videoPreview" controls>
-                                    <source src="#" type="video/mp4">
-                                    Your browser does not support the video tag.
-                                </video>
-                                <div class="range-slider" onmousedown="initDrag(event)">
-                                    <div class="slider-track"></div>
-                                    <div class="slider-selected"></div>
-                                    <div class="thumb start" id="startThumb"></div>
-                                    <div class="thumb end" id="endThumb"></div>
-                                </div>
-                                <div id="rangeValue">Start: 0%, End: 100%</div>
-                            </div>
-                            <div class="col-sm-6">
-                                <div id="cropperWrapper" style="width: 640px; height: 358px;">
-                                    <canvas id="videoCanvas"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="form-group row mb-3 mt-3" id="btnPlayerDiv" style="display: none;">
-                            <div class="col-sm-12">
-                                <button id="trimButton" class="btn btn-info"><span class="loader" id="loader3"></span>
-                                    Trim Video</button>
-                            </div>
-                        </div>
-
-                    </form>
-                </div>
+    <div class="app-shell">
+        <header class="topbar">
+            <div>
+                <p class="eyebrow">Video Editor</p>
+                <h1>Trim, crop, and export clean clips.</h1>
             </div>
-        </div>
-    </div>
+            <nav class="tool-nav" aria-label="Editing tools">
+                <a href="/" class="active">Trim & Crop</a>
+                <a href="/convert_video_ext">Convert Video</a>
+                <a href="/convert_image_ext">Convert Image</a>
+                <a href="/generate_ai_images">AI Images</a>
+                <a href="/generate_ai_video">AI Videos</a>
+            </nav>
+        </header>
 
-    <div class="footer">
-        <h2>Copyright By Nitish</h2>
-    </div>
+        <main class="workspace">
+            <form id="trimForm" method="post" enctype="multipart/form-data" class="import-panel">
+                <section class="import-group" aria-labelledby="youtubeImportLabel">
+                    <div>
+                        <h2 id="youtubeImportLabel">Import from YouTube</h2>
+                        <p>Paste a public video link and prepare it for editing.</p>
+                    </div>
+                    <div class="control-row">
+                        <div class="input-field">
+                            <label for="youtube_url">YouTube URL</label>
+                            <input type="url" id="youtube_url" placeholder="https://www.youtube.com/watch?v=..." name="youtube_url">
+                        </div>
+                        <button id="downloadButton" class="primary-action" type="button">
+                            <span class="loader" id="loader1"></span>
+                            Download
+                        </button>
+                    </div>
+                </section>
 
+                <section class="import-group" aria-labelledby="uploadImportLabel">
+                    <div>
+                        <h2 id="uploadImportLabel">Upload from device</h2>
+                        <p>Use MP4, MOV, MKV, WebM, AVI, MPEG, or M4V files.</p>
+                    </div>
+                    <div class="control-row">
+                        <div class="input-field">
+                            <label for="videoInput">Video file</label>
+                            <input id="videoInput" type="file" name="video" accept="video/*">
+                        </div>
+                        <button id="uploadButton" class="primary-action" type="submit">
+                            <span class="loader" id="loader2"></span>
+                            Upload
+                        </button>
+                    </div>
+                </section>
+
+                <div id="statusMessage" class="status-message" role="status" aria-live="polite">
+                    Add a video to begin.
+                </div>
+            </form>
+
+            <section class="empty-state" id="emptyState">
+                <div class="empty-visual" aria-hidden="true">
+                    <div class="film-frame"></div>
+                    <div class="film-frame small"></div>
+                    <div class="play-glyph"></div>
+                </div>
+                <div>
+                    <p class="eyebrow">Ready workspace</p>
+                    <h2>Your preview, crop frame, and timeline will appear here.</h2>
+                    <p>Start with a short clip while testing. Full-length renders should move to background jobs before production use.</p>
+                </div>
+            </section>
+
+            <section class="editor-panel" id="editorPanel" hidden>
+                <div class="preview-grid">
+                    <div class="media-pane">
+                        <div class="pane-heading">
+                            <div>
+                                <p class="eyebrow">Preview</p>
+                                <h2>Playback range</h2>
+                            </div>
+                            <button id="playRangeButton" class="secondary-action" type="button">Play range</button>
+                        </div>
+                        <video id="videoPreview" controls playsinline>
+                            <source src="#" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                        <div class="range-slider" id="rangeSlider">
+                            <div class="slider-track"></div>
+                            <div class="slider-selected"></div>
+                            <button class="thumb start" id="startThumb" type="button" aria-label="Start time"></button>
+                            <button class="thumb end" id="endThumb" type="button" aria-label="End time"></button>
+                        </div>
+                        <div id="rangeValue" class="range-value">Start: 0.00s, End: 0.00s</div>
+                    </div>
+
+                    <div class="media-pane">
+                        <div class="pane-heading">
+                            <div>
+                                <p class="eyebrow">Crop</p>
+                                <h2>Export frame</h2>
+                            </div>
+                            <button id="resetCropButton" class="secondary-action" type="button">Reset crop</button>
+                        </div>
+                        <div class="crop-controls">
+                            <label class="toggle-option">
+                                <input id="useCropInput" type="checkbox">
+                                <span>Apply crop</span>
+                            </label>
+                            <label class="select-field" for="aspectRatioSelect">
+                                Aspect ratio
+                                <select id="aspectRatioSelect">
+                                    <option value="free">Free crop</option>
+                                    <option value="original">Original video</option>
+                                    <option value="16:9" selected>Full screen 16:9</option>
+                                    <option value="21:9">Wide 21:9</option>
+                                    <option value="9:16">Reels 9:16</option>
+                                    <option value="1:1">Square 1:1</option>
+                                    <option value="4:5">Portrait 4:5</option>
+                                    <option value="4:3">Classic 4:3</option>
+                                </select>
+                            </label>
+                        </div>
+                        <div id="cropperWrapper" class="cropper-wrapper">
+                            <canvas id="videoCanvas"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="timeline-panel">
+                    <div class="pane-heading">
+                        <div>
+                            <p class="eyebrow">Timeline</p>
+                            <h2>Scene strip</h2>
+                        </div>
+                        <span id="clipMeta" class="clip-meta">No clip loaded</span>
+                    </div>
+                    <div id="storyboard" class="storyboard" aria-label="Video thumbnails"></div>
+                </div>
+
+                <div class="render-panel">
+                    <div>
+                        <p class="eyebrow">Export</p>
+                        <h2>Render selected range</h2>
+                    </div>
+                    <div class="export-options" aria-label="Export options">
+                        <label class="toggle-option">
+                            <input id="reverseVideoInput" type="checkbox">
+                            <span>Reverse video</span>
+                        </label>
+                        <label class="toggle-option">
+                            <input id="muteAudioInput" type="checkbox">
+                            <span>Mute audio</span>
+                        </label>
+                    </div>
+                    <button id="trimButton" class="render-action" type="button">
+                        <span class="loader" id="loader3"></span>
+                        Render video
+                    </button>
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <span>Built for fast cuts today, ready for AI-assisted editing next.</span>
+        </footer>
+    </div>
 
     <script>
-
         let videoFile;
-
-        var cropper;
-
-
+        let cropper;
         let selectedStart = 0;
-        let selectedEnd = 10;
+        let selectedEnd = 0;
+        let startPercent = 0;
+        let endPercent = 100;
+        let draggingThumb = null;
+        let playRangeTimer = null;
 
-        let dragging = false;
-        let currentThumb;
-        let startPercent = 0, endPercent = 100; // Default values for start and end
+        const trimForm = document.getElementById('trimForm');
+        const emptyState = document.getElementById('emptyState');
+        const editorPanel = document.getElementById('editorPanel');
+        const statusMessage = document.getElementById('statusMessage');
+        const videoPlayer = document.getElementById('videoPreview');
+        const rangeSlider = document.getElementById('rangeSlider');
+        const startThumb = document.getElementById('startThumb');
+        const endThumb = document.getElementById('endThumb');
+        const selectedRange = document.querySelector('.slider-selected');
+        const rangeValue = document.getElementById('rangeValue');
+        const storyboard = document.getElementById('storyboard');
+        const clipMeta = document.getElementById('clipMeta');
+        const useCropInput = document.getElementById('useCropInput');
+        const aspectRatioSelect = document.getElementById('aspectRatioSelect');
+        const reverseVideoInput = document.getElementById('reverseVideoInput');
+        const muteAudioInput = document.getElementById('muteAudioInput');
+        const cropperWrapper = document.getElementById('cropperWrapper');
 
+        const aspectRatios = {
+            free: NaN,
+            original: null,
+            '16:9': 16 / 9,
+            '21:9': 21 / 9,
+            '9:16': 9 / 16,
+            '1:1': 1,
+            '4:5': 4 / 5,
+            '4:3': 4 / 3,
+        };
 
-        let videoPlayer = document.getElementById('videoPreview');
+        function setStatus(message, type = 'info') {
+            statusMessage.textContent = message;
+            statusMessage.className = `status-message ${type}`;
+        }
 
+        function setLoading(loaderId, isLoading) {
+            document.getElementById(loaderId).style.display = isLoading ? 'inline-block' : 'none';
+        }
 
-        const initDrag = (e) => {
-            if (e.target.classList.contains('thumb')) {
-                dragging = true;
-                currentThumb = e.target;
-                document.addEventListener('mousemove', doDrag);
-                document.addEventListener('mouseup', stopDrag);
+        function formatTime(seconds) {
+            if (!Number.isFinite(seconds)) return '0.00s';
+            return `${seconds.toFixed(2)}s`;
+        }
+
+        async function parseJsonResponse(response) {
+            const data = await response.json();
+            if (!response.ok || data.error) {
+                throw new Error(data.error || 'The server could not process this video.');
             }
-        };
+            return data;
+        }
 
-        const doDrag = (e) => {
-            if (dragging) {
-                const slider = document.querySelector('.range-slider');
-                const rect = slider.getBoundingClientRect();
-                const offsetX = e.clientX - rect.left; // Mouse position inside the slider
-                const totalWidth = rect.width;
-                const positionPercent = Math.max(0, Math.min(100, (offsetX / totalWidth) * 100));
-                currentThumb.style.left = `${positionPercent}%`;
-                updateRange();
-                updateVideoPosition(positionPercent);
+        async function parseBlobResponse(response) {
+            if (!response.ok) {
+                let message = 'The server could not render the trimmed video.';
+                try {
+                    const data = await response.json();
+                    message = data.error || message;
+                } catch (error) {
+                    // Keep the generic render error when the response is not JSON.
+                }
+                throw new Error(message);
             }
-        };
+            return response.blob();
+        }
 
-        const stopDrag = () => {
-            dragging = false;
-            document.removeEventListener('mousemove', doDrag);
-            document.removeEventListener('mouseup', stopDrag);
-        };
+        function selectedAspectRatio() {
+            const selected = aspectRatioSelect.value;
+            if (selected === 'original') {
+                const width = videoPlayer.videoWidth || 16;
+                const height = videoPlayer.videoHeight || 9;
+                return width / height;
+            }
+            return aspectRatios[selected];
+        }
 
-        const updateVideoPosition = (percent) => {
-            const duration = videoPlayer.duration;
-            if (!duration) return; // Video metadata not loaded
-            const time = (percent / 100) * duration;
-            videoPlayer.currentTime = time;
-        };
-
-        // Function to update the video playback range
-        const updateRange = () => {
-            const slider = document.querySelector('.range-slider');
-            const rect = slider.getBoundingClientRect();
-            const startThumb = document.getElementById('startThumb');
-            const endThumb = document.getElementById('endThumb');
-
-            startPercent = parseFloat(startThumb.style.left);
-            console.log("startPercent,", startPercent);
-            if(startPercent < 0 || isNaN(startPercent)) startPercent = 0;
-            endPercent = parseFloat(endThumb.style.left);
-            if(endPercent < 0 || isNaN(endPercent)) endPercent = 100;
-            console.log("startPercent, endPercent", startPercent, endPercent);
-
-            const selectedRange = document.querySelector('.slider-selected');
-            selectedRange.style.left = `${startPercent}%`;
-            selectedRange.style.width = `${endPercent - startPercent}%`;
-
-            // Convert percent to time
-            const startTime = (startPercent / 100) * videoPlayer.duration;
-            const endTime = (endPercent / 100) * videoPlayer.duration;
-            console.log(videoPlayer.duration);
-
-            selectedStart = startTime
-            selectedEnd = endTime
-
-            console.log(selectedStart)
-
-            document.getElementById('rangeValue').textContent = `Start: ${startTime.toFixed(2)}s, End: ${endTime.toFixed(2)}s`;
-        };
-
+        function syncCropState() {
+            cropperWrapper.classList.toggle('crop-disabled', !useCropInput.checked);
+            if (!cropper) return;
+            cropper.setAspectRatio(selectedAspectRatio());
+            if (useCropInput.checked) {
+                cropper.crop();
+            } else {
+                cropper.clear();
+            }
+        }
 
         function setCropper(video) {
-            // Create or get existing canvas
-            var canvas = document.getElementById('videoCanvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
+            const canvas = document.getElementById('videoCanvas');
+            canvas.width = video.videoWidth || 1280;
+            canvas.height = video.videoHeight || 720;
             canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // Initialize Cropper on the canvas
             if (cropper) {
-                cropper.destroy(); // Destroy existing cropper instance if it exists
+                cropper.destroy();
             }
 
             cropper = new Cropper(canvas, {
-                aspectRatio: 16 / 9,
-                crop(event) {
-                    console.log(event.detail.x, event.detail.y, event.detail.width, event.detail.height);
-                    // Save these values for the cropping operation
+                aspectRatio: selectedAspectRatio(),
+                autoCropArea: 1,
+                cropBoxResizable: true,
+                cropBoxMovable: true,
+                dragMode: 'move',
+                responsive: true,
+                viewMode: 0,
+                background: false,
+                ready() {
+                    syncCropState();
                 },
             });
         }
 
-        document.getElementById('trimForm').addEventListener('submit', function (e) {
-            e.preventDefault();
+        function setRangeFromPercents(nextStartPercent, nextEndPercent) {
+            startPercent = Math.max(0, Math.min(nextStartPercent, 99));
+            endPercent = Math.max(1, Math.min(nextEndPercent, 100));
 
-            const loader = document.getElementById('loader2');
-            loader.style.display = 'inline-block'; // Show loader
+            if (startPercent >= endPercent) {
+                if (draggingThumb === startThumb) {
+                    startPercent = endPercent - 1;
+                } else {
+                    endPercent = startPercent + 1;
+                }
+            }
 
-            var formData = new FormData(this);
+            startThumb.style.left = `${startPercent}%`;
+            endThumb.style.left = `${endPercent}%`;
+            selectedRange.style.left = `${startPercent}%`;
+            selectedRange.style.width = `${endPercent - startPercent}%`;
+
+            const duration = videoPlayer.duration || 0;
+            selectedStart = (startPercent / 100) * duration;
+            selectedEnd = (endPercent / 100) * duration;
+            rangeValue.textContent = `Start: ${formatTime(selectedStart)}, End: ${formatTime(selectedEnd)}`;
+        }
+
+        function updateVideoPosition(percent) {
+            const duration = videoPlayer.duration;
+            if (!duration) return;
+            videoPlayer.currentTime = (percent / 100) * duration;
+        }
+
+        function pointerPercent(event) {
+            const rect = rangeSlider.getBoundingClientRect();
+            const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+            return Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+        }
+
+        function startDrag(event) {
+            if (!event.target.classList.contains('thumb')) return;
+            draggingThumb = event.target;
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', stopDrag);
+            document.addEventListener('touchmove', drag, { passive: false });
+            document.addEventListener('touchend', stopDrag);
+        }
+
+        function drag(event) {
+            if (!draggingThumb) return;
+            event.preventDefault();
+            const percent = pointerPercent(event);
+            if (draggingThumb === startThumb) {
+                setRangeFromPercents(percent, endPercent);
+            } else {
+                setRangeFromPercents(startPercent, percent);
+            }
+            updateVideoPosition(percent);
+        }
+
+        function stopDrag() {
+            draggingThumb = null;
+            document.removeEventListener('mousemove', drag);
+            document.removeEventListener('mouseup', stopDrag);
+            document.removeEventListener('touchmove', drag);
+            document.removeEventListener('touchend', stopDrag);
+        }
+
+        function renderThumbnails(thumbnails) {
+            storyboard.innerHTML = '';
+            if (!thumbnails || thumbnails.length === 0) {
+                storyboard.innerHTML = '<p class="timeline-empty">Thumbnails will appear after processing.</p>';
+                return;
+            }
+
+            thumbnails.forEach((thumb) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'thumbnail-tile';
+                button.setAttribute('aria-label', `Jump to ${thumb.timestamp} seconds`);
+
+                const img = document.createElement('img');
+                img.src = thumb.url;
+                img.alt = `Frame at ${thumb.timestamp} seconds`;
+
+                const label = document.createElement('span');
+                label.textContent = formatTime(thumb.timestamp);
+
+                button.appendChild(img);
+                button.appendChild(label);
+                button.addEventListener('click', () => {
+                    videoPlayer.currentTime = thumb.timestamp;
+                });
+                storyboard.appendChild(button);
+            });
+        }
+
+        function loadEditableVideo(data) {
+            emptyState.hidden = true;
+            editorPanel.hidden = false;
+            videoFile = data.video_file;
+            videoPlayer.src = `/uploads/${videoFile}`;
+            videoPlayer.load();
+            renderThumbnails(data.thumbnails);
+
+            videoPlayer.onloadedmetadata = function () {
+                setRangeFromPercents(0, 100);
+                clipMeta.textContent = `${formatTime(videoPlayer.duration)} loaded`;
+                setTimeout(function () {
+                    setCropper(videoPlayer);
+                }, 250);
+                setStatus('Video is ready. Choose a range, crop if needed, then trim.', 'success');
+            };
+        }
+
+        async function loadPendingGeneratedVideo() {
+            const pendingVideo = window.localStorage.getItem('pendingVideoFile');
+            if (!pendingVideo) return;
+            window.localStorage.removeItem('pendingVideoFile');
+            setStatus('Loading generated video...', 'info');
+            try {
+                const response = await fetch(`/api/load_video/${encodeURIComponent(pendingVideo)}`);
+                const data = await parseJsonResponse(response);
+                loadEditableVideo(data);
+            } catch (error) {
+                setStatus(error.message, 'error');
+            }
+        }
+
+        trimForm.addEventListener('submit', function (event) {
+            event.preventDefault();
+            const fileInput = document.getElementById('videoInput');
+            if (!fileInput.files.length) {
+                setStatus('Choose a video file before uploading.', 'error');
+                return;
+            }
+
+            setLoading('loader2', true);
+            setStatus('Uploading and preparing your video...', 'info');
+
             fetch('/upload', {
                 method: 'POST',
-                body: formData
-            }).then(response => response.json())
-                .then(data => {
-                    document.getElementById('videoPlayerDiv').style.display = 'block';
-                    document.getElementById('btnPlayerDiv').style.display = 'block';
-                    videoFile = data.video_file;
-                    videoPlayer = document.getElementById('videoPreview');
-                    videoPlayer.src = "/uploads/" + videoFile;
-                    videoPlayer.load();
-                    // Event listener for when the video's metadata is loaded
-                    videoPlayer.onloadedmetadata = function () {
-
-                        const startTime = 0;
-                        const endTime = videoPlayer.duration;
-                        selectedEnd = endTime;
-                        console.log("Duration:", videoPlayer.duration);
-                        document.getElementById('rangeValue').textContent = `Start: ${startTime.toFixed(2)}s, End: ${endTime.toFixed(2)}s`;
-                        
-                        setTimeout(function () {
-                            setCropper(videoPlayer);
-                        }, 1000);
-
-                        updateVideoPosition(100);
-                    };
-                    /*data.thumbnails.forEach((thumb, index) => {
-                        let img = document.createElement("img");
-                        img.src = thumb.url;
-                        img.className = "thumbnail";
-                        img.onclick = () => {
-                            if (index <= selectedEnd) {
-                                updateStartPoint(index);
-                            } else {
-                                updateEndPoint(index);
-                            }
-                        };
-                        document.getElementById("storyboard").appendChild(img);
-                    });*/
-                    loader.style.display = 'none';
-                });
+                body: new FormData(trimForm)
+            }).then(parseJsonResponse)
+                .then(loadEditableVideo)
+                .catch(error => setStatus(error.message, 'error'))
+                .finally(() => setLoading('loader2', false));
         });
 
+        document.getElementById('downloadButton').addEventListener('click', function () {
+            const youtubeUrl = document.getElementById('youtube_url').value.trim();
+            if (!youtubeUrl) {
+                setStatus('Paste a YouTube URL before downloading.', 'error');
+                return;
+            }
 
-
-        document.getElementById('downloadButton').addEventListener('click', function (e) {
-            e.preventDefault();
-
-            const loader = document.getElementById('loader1');
-            loader.style.display = 'inline-block'; // Show loader
-
-            var youtube_url = document.getElementById('youtube_url').value; // Assuming this holds your start time
+            setLoading('loader1', true);
+            setStatus('Downloading and preparing the YouTube video...', 'info');
 
             fetch('/download_youtube_video', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ youtube_url: youtube_url })
-            }).then(response => response.json())
-                .then(data => {
-                    document.getElementById('videoPlayerDiv').style.display = 'block';
-                    document.getElementById('btnPlayerDiv').style.display = 'block';
-                    videoFile = data.video_file;
-                    videoPlayer = document.getElementById('videoPreview');
-                    videoPlayer.src = "/uploads/" + videoFile;
-                    videoPlayer.load();
-                    // Event listener for when the video's metadata is loaded
-
-                    videoPlayer.onloadedmetadata = function () {
-
-                        const startTime = 0;
-                        const endTime = videoPlayer.duration;
-                        selectedEnd = endTime;
-                        console.log("Duration:", videoPlayer.duration);
-                        document.getElementById('rangeValue').textContent = `Start: ${startTime.toFixed(2)}s, End: ${endTime.toFixed(2)}s`;
-                        
-                        setTimeout(function () {
-                            setCropper(videoPlayer);
-                        }, 1000);
-                        updateVideoPosition(100);
-                    };
-                    /*data.thumbnails.forEach((thumb, index) => {
-                        let img = document.createElement("img");
-                        img.src = thumb.url;
-                        img.className = "thumbnail";
-                        img.onclick = () => {
-                            if (index <= selectedEnd) {
-                                updateStartPoint(index);
-                            } else {
-                                updateEndPoint(index);
-                            }
-                        };
-                        document.getElementById("storyboard").appendChild(img);
-                    });*/
-                    loader.style.display = 'none';
-                });
+                body: JSON.stringify({ youtube_url: youtubeUrl })
+            }).then(parseJsonResponse)
+                .then(loadEditableVideo)
+                .catch(error => setStatus(error.message, 'error'))
+                .finally(() => setLoading('loader1', false));
         });
 
-        // Function to update start point
-        function updateStartPoint(newStart) {
-            if (newStart < selectedEnd) {
-                selectedStart = newStart;
-                updateUI();
-            } else {
-                alert("Start point must be less than the end point.");
-            }
-        }
-
-        // Function to update end point
-        function updateEndPoint(newEnd) {
-            if (newEnd > selectedStart) {
-                selectedEnd = newEnd;
-                updateUI();
-            } else {
-                alert("End point must be greater than the start point.");
-            }
-        }
-
-
-        function selectTrimPoint(timestamp, imgElement) {
-            if (selectedStart === null || (selectedStart !== null && selectedEnd !== null)) {
-                selectedStart = timestamp;
-                clearSelection();
-                imgElement.classList.add('selected');
-            } else {
-                selectedEnd = timestamp;
-                imgElement.classList.add('selected');
-            }
-            updateUI();
-        }
-
-        function clearSelection() {
-            document.querySelectorAll('.thumbnail').forEach(img => img.classList.remove('selected'));
-        }
-
-        function updateUI() {
-            // Calculate the positions of the start and end boxes based on the selected points
-            let startLeft = selectedStart * 100;
-            let endLeft = selectedEnd * 100;
-
-            // Position the start and end boxes
-            startBox.style.left = startLeft + 'px';
-            endBox.style.left = endLeft + 'px';
-
-            // Optional: Highlight the range between start and end points on the thumbnails
-            document.querySelectorAll('.thumbnail').forEach((img, index) => {
-                if (index >= selectedStart && index <= selectedEnd) {
-                    img.classList.add('selected');
-                } else {
-                    img.classList.remove('selected');
+        document.getElementById('playRangeButton').addEventListener('click', function () {
+            if (!videoPlayer.duration) return;
+            clearInterval(playRangeTimer);
+            videoPlayer.currentTime = selectedStart;
+            videoPlayer.play();
+            playRangeTimer = setInterval(() => {
+                if (videoPlayer.currentTime >= selectedEnd || videoPlayer.paused || videoPlayer.ended) {
+                    videoPlayer.pause();
+                    clearInterval(playRangeTimer);
                 }
-            });
-        }
+            }, 100);
+        });
 
-        document.getElementById('trimButton').addEventListener('click', function (e) {
-            e.preventDefault();
-
-            const loader = document.getElementById('loader3');
-            loader.style.display = 'inline-block'; // Show loader
-
-            var cropData = (cropper == null || cropper == undefined) ? null : cropper.getData();
-            console.log(cropData)
-            if (cropData == null) {
-                cropData.x = -1
-                cropData.y = -1
-                cropData.width = -1
-                cropData.height = -1
+        document.getElementById('resetCropButton').addEventListener('click', function () {
+            if (cropper) {
+                useCropInput.checked = true;
+                cropper.reset();
+                cropper.crop();
+                syncCropState();
             }
-            var startTime = selectedStart; // Assuming this holds your start time
-            var endTime = selectedEnd;     // Assuming this holds your end time
-            var videoFilename = videoFile; // Replace with actual filename or identifier
+        });
 
+        useCropInput.addEventListener('change', syncCropState);
+        aspectRatioSelect.addEventListener('change', syncCropState);
+
+        document.getElementById('trimButton').addEventListener('click', function () {
+            if (!videoFile) {
+                setStatus('Load a video before rendering.', 'error');
+                return;
+            }
+
+            setLoading('loader3', true);
+            setStatus('Rendering your trimmed video...', 'info');
+
+            const cropData = useCropInput.checked && cropper
+                ? cropper.getData(true)
+                : { x: -1, y: -1, width: -1, height: -1 };
             fetch('/trim_video', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ filename: videoFilename, start_time: startTime, end_time: endTime, crop_x: cropData.x, crop_y: cropData.y, crop_width: cropData.width, crop_height: cropData.height })
-            }).then(response => response.blob())
+                body: JSON.stringify({
+                    filename: videoFile,
+                    start_time: selectedStart,
+                    end_time: selectedEnd,
+                    use_crop: useCropInput.checked,
+                    reverse_video: reverseVideoInput.checked,
+                    mute_audio: muteAudioInput.checked,
+                    crop_x: cropData.x,
+                    crop_y: cropData.y,
+                    crop_width: cropData.width,
+                    crop_height: cropData.height
+                })
+            }).then(parseBlobResponse)
                 .then(blob => {
-                    var url = window.URL.createObjectURL(blob);
-                    var a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'trimmed_video.mp4';
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                    loader.style.display = 'none';
-                });
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = 'trimmed_video.mp4';
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                    window.URL.revokeObjectURL(url);
+                    setStatus('Trim complete. Your download is ready.', 'success');
+                })
+                .catch(error => setStatus(error.message, 'error'))
+                .finally(() => setLoading('loader3', false));
         });
 
-
-        function removeStartBoxes() {
-            // Find the index of the current startBox
-            let startBoxIndex = Array.from(document.getElementById("storyboard").children).indexOf(startBox);
-
-            // Remove all thumbnail elements before the current startBox
-            let thumbnails = document.querySelectorAll('#storyboard .thumbnail');
-            for (let i = 0; i < startBoxIndex; i++) {
-                thumbnails[i].remove();
-            }
-
-            // Update selectedStart to the first thumbnail after the current startBox
-            selectedStart = startBoxIndex;
-            updateUI();
-        }
-
-        function removeEndBoxes() {
-            // Find the index of the current endBox
-            let endBoxIndex = Array.from(document.getElementById("storyboard").children).indexOf(endBox);
-
-            // Remove all thumbnail elements after the current endBox
-            let thumbnails = document.querySelectorAll('#storyboard .thumbnail');
-            for (let i = endBoxIndex + 1; i < thumbnails.length; i++) {
-                thumbnails[i].remove();
-            }
-
-            // Update selectedEnd to the last thumbnail before the current endBox
-            selectedEnd = endBoxIndex - 1;
-            updateUI();
-        }
+        rangeSlider.addEventListener('mousedown', startDrag);
+        rangeSlider.addEventListener('touchstart', startDrag, { passive: true });
+        loadPendingGeneratedVideo();
     </script>
-
-
 </body>
 
 </html>
